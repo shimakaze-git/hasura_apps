@@ -1,0 +1,60 @@
+version: '3.6'
+services:
+  firebase:
+    container_name: firebase
+    build: ./auth
+    tty: true
+    volumes:
+      - ./auth:/opt/workspace:cached
+    ports:
+      - 9099:9099 # Auth
+      - 4000:4000 # Emulator Suite UI
+      - 5001:5001 # Cloud Functions
+      - 8080:8080 # Cloud Firestore
+    # environment:
+    #   USE_LOCAL_BACKEND: 1
+    # working_dir: /opt/workspace
+    # networks:
+    #   - hasura_networks
+    # command: bash -c 'pwd && ls -la'
+    # command: bash -c 'yarn && cd functions && yarn && /bin/bash'
+
+
+  postgres:
+    image: postgres:12
+    restart: always
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: postgrespassword
+
+  graphql-engine:
+    image: hasura/graphql-engine:v2.2.0
+    ports:
+      - "8000:8080"
+    depends_on:
+      - "postgres"
+    restart: always
+    environment:
+      ## postgres database to store Hasura metadata
+      HASURA_GRAPHQL_METADATA_DATABASE_URL: postgres://postgres:postgrespassword@postgres:5432/postgres
+
+      ## this env var can be used to add the above postgres database to Hasura as a data source. this can be removed/updated based on your needs
+      PG_DATABASE_URL: postgres://postgres:postgrespassword@postgres:5432/postgres
+
+      ## enable the console served by server
+      HASURA_GRAPHQL_ENABLE_CONSOLE: "true" # set to "false" to disable console
+
+      ## enable debugging mode. It is recommended to disable this in production
+      HASURA_GRAPHQL_DEV_MODE: "true"
+      HASURA_GRAPHQL_ENABLED_LOG_TYPES: startup, http-log, webhook-log, websocket-log, query-log
+
+      ## uncomment next line to set an admin secret
+      # HASURA_GRAPHQL_ADMIN_SECRET: myadminsecretkey
+
+volumes:
+  db_data:
+
+networks:
+  hasura_networks:
+    driver: bridge
